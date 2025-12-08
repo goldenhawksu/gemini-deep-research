@@ -92,7 +92,7 @@ export const defaultValues: SettingStore = {
   mode: "",
   apiKey: "",
   apiProxy: "",
-  thinkingModel: "gemini-2.5-pro",
+  thinkingModel: "gemini-2.5-flash",
   networkingModel: "gemini-2.5-flash",
   googleVertexProject: "",
   googleVertexLocation: "",
