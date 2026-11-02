@@ -166,7 +166,7 @@ function FinalReport() {
 
   return (
     <>
-      <section className="p-4 border rounded-md mt-4 print:border-none">
+      <section id="research-finalReport" className="research-panel print:border-none">
         <h3 className="font-semibold text-lg border-b mb-2 leading-10 print:hidden">
           {t("research.finalReport.title")}
         </h3>

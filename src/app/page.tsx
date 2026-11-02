@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { useGlobalStore } from "@/store/global";
 import { useSettingStore } from "@/store/setting";
 
+const Overview = dynamic(() => import("@/components/Research/Overview"));
 const Header = dynamic(() => import("@/components/Internal/Header"));
 const Setting = dynamic(() => import("@/components/Setting"));
 const Topic = dynamic(() => import("@/components/Research/Topic"));
@@ -36,15 +37,17 @@ function Home() {
     setTheme(settingStore.theme);
   }, [theme, setTheme]);
   return (
-    <div className="max-lg:max-w-screen-md max-w-screen-lg mx-auto px-4">
+    <div className="workspace-shell">
+      <a href="#main-content" className="skip-link">{t("workspace.skip")}</a>
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1}>
+        <Overview />
         <Topic />
         <Feedback />
         <SearchResult />
         <FinalReport />
       </main>
-      <footer className="my-4 text-center text-sm text-gray-600 print:hidden">
+      <footer className="my-4 text-center text-sm text-muted-foreground print:hidden">
         <a href="https://github.com/u14app/" target="_blank">
           {t("copyright", {
             name: "U14App",

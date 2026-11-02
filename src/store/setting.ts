@@ -134,8 +134,8 @@ export const defaultValues: SettingStore = {
   azureNetworkingModel: "",
   openAICompatibleApiKey: "",
   openAICompatibleApiProxy: "",
-  openAICompatibleThinkingModel: "gpt-6.1-terra",
-  openAICompatibleNetworkingModel: "gpt-6.1-terra",
+  openAICompatibleThinkingModel: "gpt-6.1-sol",
+  openAICompatibleNetworkingModel: "gpt-6.1-sol",
   pollinationsApiProxy: "",
   pollinationsThinkingModel: "",
   pollinationsNetworkingModel: "",
@@ -192,7 +192,18 @@ export function resolveRequestMode(settings: Partial<SettingStore>): string {
 export function migrateSettings(saved: Partial<SettingStore>): Partial<SettingStore> {
   const untouched = saved.provider === "google" && !saved.mode && !saved.apiKey &&
     saved.thinkingModel === "gemini-2.5-flash" && saved.networkingModel === "gemini-2.5-flash" && saved.searchProvider === "model";
-  return untouched ? { ...saved, provider: "openaicompatible", mode: "proxy", searchProvider: "searxng", openAICompatibleThinkingModel: "gpt-6.1-terra", openAICompatibleNetworkingModel: "gpt-6.1-terra" } : { ...saved, mode: resolveRequestMode(saved) };
+  const migrated = untouched
+    ? { ...saved, provider: "openaicompatible", mode: "proxy", searchProvider: "searxng", openAICompatibleThinkingModel: defaultValues.openAICompatibleThinkingModel, openAICompatibleNetworkingModel: defaultValues.openAICompatibleNetworkingModel }
+    : { ...saved, mode: resolveRequestMode(saved) };
+  if (migrated.provider === "openaicompatible" && migrated.mode === "proxy") {
+    if (migrated.openAICompatibleThinkingModel === "gpt-6.1-terra") {
+      migrated.openAICompatibleThinkingModel = defaultValues.openAICompatibleThinkingModel;
+    }
+    if (migrated.openAICompatibleNetworkingModel === "gpt-6.1-terra") {
+      migrated.openAICompatibleNetworkingModel = defaultValues.openAICompatibleNetworkingModel;
+    }
+  }
+  return migrated;
 }
 
 export const useSettingStore = create(
@@ -202,6 +213,6 @@ export const useSettingStore = create(
       update: (values) => set(values),
       reset: () => set(defaultValues),
     }),
-    { name: "setting", version: 2, migrate: (saved) => migrateSettings(saved as Partial<SettingStore>) as SettingStore & SettingActions },
+    { name: "setting", version: 3, migrate: (saved) => migrateSettings(saved as Partial<SettingStore>) as SettingStore & SettingActions },
   ),
 );

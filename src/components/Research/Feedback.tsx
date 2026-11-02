@@ -79,7 +79,7 @@ function Feedback() {
   }, [taskStore.feedback, form]);
 
   return (
-    <section className="p-4 border rounded-md mt-4 print:hidden">
+    <section id="research-feedback" className="research-panel print:hidden">
       <h3 className="font-semibold text-lg border-b mb-2 leading-10">
         {t("research.feedback.title")}
       </h3>

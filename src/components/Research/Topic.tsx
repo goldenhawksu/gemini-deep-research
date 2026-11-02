@@ -124,7 +124,7 @@ function Topic() {
   }, [taskStore.question, form]);
 
   return (
-    <section className="p-4 border rounded-md mt-4 print:hidden">
+    <section id="research-topic" className="research-panel print:hidden">
       <div className="flex justify-between items-center border-b mb-2">
         <h3 className="font-semibold text-lg leading-10">
           {t("research.topic.title")}
@@ -175,10 +175,10 @@ function Topic() {
                 ) : null}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <div className="inline-flex border p-2 rounded-md text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <button type="button" className="inline-flex min-h-11 items-center border p-2 rounded-md text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
                       <FilePlus className="w-5 h-5" />
                       <span className="ml-1">{t("knowledge.addResource")}</span>
-                    </div>
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => openKnowledgeList()}>
