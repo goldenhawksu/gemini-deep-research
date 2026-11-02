@@ -8,7 +8,12 @@ export const SEARXNG_HEADERS = {
 };
 export async function fetchSearxng(url: string, init: RequestInit = {}) {
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(url, { ...init, redirect: "error", headers: { ...SEARXNG_HEADERS, ...init.headers } });
+    // Vercel Edge supports only follow/manual; reject redirects ourselves.
+    const response = await fetch(url, { ...init, redirect: "manual", headers: { ...SEARXNG_HEADERS, ...init.headers } });
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new Error("Search upstream redirect rejected");
+    }
     if (response.status !== 429 || attempt === 2) return response;
     await response.body?.cancel();
     await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 3000 : 5000));

@@ -26,6 +26,47 @@ test('SearXNG uses fixed server origin, browser headers, GET JSON and three 429 
     assert.deepEqual(waits, [3000, 5000]);
   } finally { global.fetch = originalFetch; global.setTimeout = originalTimeout; }
 });
+test('SearXNG succeeds with the redirect modes supported by Vercel Edge', async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async (_url, init) => {
+    if (init?.redirect !== 'follow' && init?.redirect !== 'manual') {
+      throw new TypeError('Invalid redirect value must be follow or manual');
+    }
+    assert.equal(init.redirect, 'manual');
+    return Response.json({ results: [{ title: 'Cloudflare' }] });
+  };
+  try {
+    const response = await POST(new NextRequest('http://localhost/api/search/searxng/search?q=Cloudflare&format=json', { method: 'POST' }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { results: [{ title: 'Cloudflare' }] });
+  } finally { global.fetch = originalFetch; }
+});
+test('SearXNG rejects redirects without following or exposing their destination', async () => {
+  const { fetchSearxng } = await import('../src/utils/searxng');
+  const originalFetch = global.fetch;
+  try {
+    for (const status of [301, 302, 303, 307, 308]) {
+      let calls = 0;
+      let canceled = false;
+      global.fetch = async (_url, init) => {
+        calls++;
+        assert.equal(init?.redirect, 'manual');
+        return new Response(new ReadableStream({ cancel() { canceled = true; } }), {
+          status, headers: { Location: 'https://other.example/private?token=secret' },
+        });
+      };
+      await assert.rejects(fetchSearxng('https://searxng.aesc.ai/search?q=test'), {
+        message: 'Search upstream redirect rejected',
+      });
+      assert.equal(calls, 1);
+      assert.equal(canceled, true);
+    }
+    const response = await POST(new NextRequest('http://localhost/api/search/searxng/search?q=test', { method: 'POST' }));
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: 'Search upstream unavailable' });
+    assert.equal(response.headers.get('Location'), null);
+  } finally { global.fetch = originalFetch; }
+});
 test('server-side SearXNG searches use the same headers', async () => {
   const { createSearchProvider } = await import('../src/utils/deep-research/search');
   const originalFetch = global.fetch;
