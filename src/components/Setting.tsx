@@ -12,7 +12,6 @@ import { RefreshCw, CircleHelp, MonitorDown } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "sonner";
 import { Password } from "@/components/Internal/PasswordInput";
 import {
   Dialog,
@@ -50,7 +49,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import useModel from "@/hooks/useModelList";
-import { useSettingStore } from "@/store/setting";
+import { defaultValues, resolveRequestMode, useSettingStore } from "@/store/setting";
 import {
   GEMINI_BASE_URL,
   OPENROUTER_BASE_URL,
@@ -79,7 +78,6 @@ import {
   filterPollinationsModelList,
   getCustomModelList,
 } from "@/utils/model";
-import { researchStore } from "@/utils/storage";
 import { cn } from "@/utils/style";
 import { omit, capitalize } from "radash";
 
@@ -228,7 +226,6 @@ function Setting({ open, onClose }: SettingProps) {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const thinkingModelList = useMemo(() => {
-    const { provider } = useSettingStore.getState();
     if (provider === "google") {
       return filterThinkingModelList(modelList);
     } else if (provider === "openrouter") {
@@ -241,9 +238,8 @@ function Setting({ open, onClose }: SettingProps) {
       return filterPollinationsModelList(modelList);
     }
     return [[], modelList];
-  }, [modelList]);
+  }, [modelList, provider]);
   const networkingModelList = useMemo(() => {
-    const { provider } = useSettingStore.getState();
     if (provider === "google") {
       return filterNetworkingModelList(modelList);
     } else if (provider === "openrouter") {
@@ -256,7 +252,7 @@ function Setting({ open, onClose }: SettingProps) {
       return filterPollinationsModelList(modelList);
     }
     return [[], modelList];
-  }, [modelList]);
+  }, [modelList, provider]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -318,7 +314,7 @@ function Setting({ open, onClose }: SettingProps) {
   }
 
   function handleSubmit(values: z.infer<typeof formSchema>) {
-    update(values);
+    update({ ...values, mode: resolveRequestMode(values) });
     onClose();
   }
 
@@ -351,18 +347,10 @@ function Setting({ open, onClose }: SettingProps) {
   }
 
   function handleReset() {
-    toast.warning(t("setting.resetSetting"), {
-      description: t("setting.resetSettingWarning"),
-      duration: 5000,
-      action: {
-        label: t("setting.confirm"),
-        onClick: async () => {
-          const { reset } = useSettingStore.getState();
-          reset();
-          await researchStore.clear();
-        },
-      },
-    });
+    if (!window.confirm(t("setting.resetSettingWarning"))) return;
+    useSettingStore.getState().reset();
+    form.reset(defaultValues);
+    void fetchModelList();
   }
 
   useLayoutEffect(() => {
@@ -374,12 +362,11 @@ function Setting({ open, onClose }: SettingProps) {
 
   useLayoutEffect(() => {
     if (open && mode === "") {
-      const { apiKey, accessPassword, update } = useSettingStore.getState();
-      const requestMode = !apiKey && accessPassword ? "proxy" : "local";
+      const requestMode = resolveRequestMode(useSettingStore.getState());
       update({ mode: requestMode });
       form.setValue("mode", requestMode);
     }
-  }, [open, mode, form]);
+  }, [open, mode, form, update]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -387,6 +374,11 @@ function Setting({ open, onClose }: SettingProps) {
         <DialogHeader>
           <DialogTitle>{t("setting.title")}</DialogTitle>
           <DialogDescription>{t("setting.description")}</DialogDescription>
+          {mode === "proxy" && provider === "openaicompatible" && searchProvider === "searxng" ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t("setting.siteDefaultsReady")}
+            </p>
+          ) : null}
         </DialogHeader>
         <Form {...form}>
           <form className="space-y-4">
@@ -1237,41 +1229,6 @@ function Setting({ open, onClose }: SettingProps) {
                       )}
                     />
                   </div>
-                </div>
-                <div
-                  className={cn("space-y-4", {
-                    hidden: mode === "local" || BUILD_MODE === "export",
-                  })}
-                >
-                  <FormField
-                    control={form.control}
-                    name="accessPassword"
-                    render={({ field }) => (
-                      <FormItem className="from-item">
-                        <FormLabel className="from-label">
-                          <HelpTip tip={t("setting.accessPasswordTip")}>
-                            {t("setting.accessPassword")}
-                            <span className="ml-1 text-red-500 max-sm:hidden">
-                              *
-                            </span>
-                          </HelpTip>
-                        </FormLabel>
-                        <FormControl className="form-field">
-                          <Password
-                            type="text"
-                            placeholder={t("setting.accessPasswordPlaceholder")}
-                            {...field}
-                            onBlur={() =>
-                              updateSetting(
-                                "accessPassword",
-                                form.getValues("accessPassword"),
-                              )
-                            }
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div
                   className={cn("space-y-4", {
@@ -2558,7 +2515,7 @@ function Setting({ open, onClose }: SettingProps) {
                               })}
                             >
                               <Select
-                                defaultValue={field.value}
+                                value={field.value}
                                 onValueChange={field.onChange}
                               >
                                 <SelectTrigger>
@@ -2623,7 +2580,7 @@ function Setting({ open, onClose }: SettingProps) {
                               })}
                             >
                               <Select
-                                defaultValue={field.value}
+                                value={field.value}
                                 onValueChange={field.onChange}
                               >
                                 <SelectTrigger>
@@ -2868,7 +2825,7 @@ function Setting({ open, onClose }: SettingProps) {
                               })}
                             >
                               <Select
-                                defaultValue={field.value}
+                                value={field.value}
                                 onValueChange={field.onChange}
                               >
                                 <SelectTrigger>
@@ -2933,7 +2890,7 @@ function Setting({ open, onClose }: SettingProps) {
                               })}
                             >
                               <Select
-                                defaultValue={field.value}
+                                value={field.value}
                                 onValueChange={field.onChange}
                               >
                                 <SelectTrigger>
@@ -3610,19 +3567,7 @@ function Setting({ open, onClose }: SettingProps) {
                     </small>
                   </div>
                 </div>
-                <div className="from-item">
-                  <Label className="from-label">
-                    {t("setting.resetSetting")}
-                  </Label>
-                  <Button
-                    className="form-field hover:text-red-500"
-                    type="button"
-                    variant="ghost"
-                    onClick={() => handleReset()}
-                  >
-                    {t("setting.resetAllSettings")}
-                  </Button>
-                </div>
+
               </TabsContent>
               <TabsContent
                 className="space-y-4 min-h-[250px]"
@@ -3775,6 +3720,9 @@ function Setting({ open, onClose }: SettingProps) {
             </Tabs>
           </form>
         </Form>
+        <Button type="button" variant="outline" onClick={handleReset}>
+          {t("setting.resetAllSettings")}
+        </Button>
         <DialogFooter className="mt-2 flex-row sm:justify-between sm:space-x-0 gap-3">
           <Button className="flex-1" variant="outline" onClick={onClose}>
             {t("setting.cancel")}

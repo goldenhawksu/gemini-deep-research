@@ -109,14 +109,14 @@ interface OllamaModel {
 
 function useModelList() {
   const [modelList, setModelList] = useState<string[]>([]);
-  const { mode, provider } = useSettingStore.getState();
+  const { provider } = useSettingStore();
 
   useEffect(() => {
     setModelList([]);
   }, [provider]);
 
   async function refresh(provider: string): Promise<string[]> {
-    const { accessPassword } = useSettingStore.getState();
+    const { mode, accessPassword } = useSettingStore.getState();
     const accessKey = generateSignature(accessPassword, Date.now());
 
     if (provider === "google") {
