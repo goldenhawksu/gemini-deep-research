@@ -39,8 +39,6 @@ const BOCHA_API_BASE_URL =
   process.env.BOCHA_API_BASE_URL || "https://api.bochaai.com";
 const BRAVE_API_BASE_URL =
   process.env.BRAVE_API_BASE_URL || "https://api.search.brave.com/res";
-const SEARXNG_API_BASE_URL =
-  process.env.SEARXNG_API_BASE_URL || "http://0.0.0.0:8080";
 
 export default async function Config(phase: string) {
   const nextConfig: NextConfig = {
@@ -145,10 +143,7 @@ export default async function Config(phase: string) {
           source: "/api/search/brave/:path*",
           destination: `${BRAVE_API_BASE_URL}/:path*`,
         },
-        {
-          source: "/api/search/searxng/:path*",
-          destination: `${SEARXNG_API_BASE_URL}/:path*`,
-        },
+
       ];
     };
   }

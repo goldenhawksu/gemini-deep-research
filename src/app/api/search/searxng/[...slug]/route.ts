@@ -1,49 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SEARXNG_BASE_URL } from "@/constants/urls";
-
+import { fetchSearxng } from "@/utils/searxng";
 export const runtime = "edge";
-export const preferredRegion = [
-  "cle1",
-  "iad1",
-  "pdx1",
-  "sfo1",
-  "sin1",
-  "syd1",
-  "hnd1",
-  "kix1",
-];
-
-const API_PROXY_BASE_URL = process.env.SEARXNG_API_BASE_URL || SEARXNG_BASE_URL;
-
 export async function POST(req: NextRequest) {
-  let body;
-  if (req.method.toUpperCase() !== "GET") {
-    body = await req.json();
-  }
-  const searchParams = req.nextUrl.searchParams;
-  const path = searchParams.getAll("slug");
-  searchParams.delete("slug");
-  const params = searchParams.toString();
-
+  // Only the search endpoint is exposed; no client-controlled proxy or path.
+  const url = new URL("search", `${(process.env.SEARXNG_API_BASE_URL || "https://searxng.aesc.ai").replace(/\/$/, "")}/`);
+  url.search = req.nextUrl.search;
+  url.searchParams.delete("slug");
+  url.searchParams.set("format", "json");
   try {
-    let url = `${API_PROXY_BASE_URL}/${decodeURIComponent(path.join("/"))}`;
-    if (params) url += `?${params}`;
-    const payload: RequestInit = {
-      method: req.method,
-      headers: {
-        "Content-Type": req.headers.get("Content-Type") || "application/json",
-      },
-    };
-    if (body) payload.body = JSON.stringify(body);
-    const response = await fetch(url, payload);
-    return new NextResponse(response.body, response);
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(error);
-      return NextResponse.json(
-        { code: 500, message: error.message },
-        { status: 500 }
-      );
-    }
+    const response = await fetchSearxng(url.toString(), { method: "GET" });
+    return new NextResponse(response.body, { status: response.status, headers: { "Content-Type": response.headers.get("Content-Type") || "application/json", "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "Search upstream unavailable" }, { status: 502 });
   }
 }

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { getCustomModelList, multiApiKeyPolling } from "@/utils/model";
 import { verifySignature } from "@/utils/signature";
+import { SESSION_COOKIE, verifySession } from "@/utils/session";
 import { generateAuthToken } from "@/utils/vertexAuth";
 
-const NODE_ENV = process.env.NODE_ENV;
 const accessPassword = process.env.ACCESS_PASSWORD || "";
 // AI provider API key
 const GOOGLE_GENERATIVE_AI_API_KEY =
@@ -33,7 +33,7 @@ const MODEL_LIST = process.env.NEXT_PUBLIC_MODEL_LIST || "";
 
 // Limit the middleware to paths starting with `/api/`
 export const config = {
-  matcher: "/api/:path*",
+  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
 };
 
 const ERRORS = {
@@ -50,7 +50,18 @@ const ERRORS = {
 };
 
 export async function middleware(request: NextRequest) {
-  if (NODE_ENV === "production") console.debug(request);
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/login" || pathname === "/api/auth/login") return NextResponse.next();
+  const hasSession = await verifySession(request.cookies.get(SESSION_COOKIE)?.value, accessPassword);
+  const isAPI = pathname.startsWith("/api/");
+  if (!isAPI) {
+    if (!hasSession) return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.next({ headers: { "Cache-Control": "private, no-store" } });
+  }
+  // Existing API clients may still use their provider-specific signatures.
+  // Browser clients authenticate only via HttpOnly cookie, never a stored password.
+  const verifyAccess = (signature: string, key: string, timestamp: number) =>
+    hasSession || (!!key && verifySignature(signature, key, timestamp));
 
   const disabledAIProviders =
     DISABLED_AI_PROVIDER.length > 0 ? DISABLED_AI_PROVIDER.split(",") : [];
@@ -91,7 +102,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("x-goog-api-key") || "";
     const isDisabledGeminiModel = hasDisabledGeminiModel();
     if (
-      !verifySignature(authorization, accessPassword, Date.now()) ||
+      !verifyAccess(authorization, accessPassword, Date.now()) ||
       disabledAIProviders.includes("google") ||
       isDisabledGeminiModel
     ) {
@@ -131,7 +142,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -171,7 +182,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -211,7 +222,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -251,7 +262,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("x-api-key") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(authorization, accessPassword, Date.now()) ||
+      !verifyAccess(authorization, accessPassword, Date.now()) ||
       disabledAIProviders.includes("anthropic") ||
       isDisabledModel
     ) {
@@ -291,7 +302,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -331,7 +342,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -371,7 +382,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -411,7 +422,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("api-key") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(authorization, accessPassword, Date.now()) ||
+      !verifyAccess(authorization, accessPassword, Date.now()) ||
       disabledAIProviders.includes("azure") ||
       isDisabledModel
     ) {
@@ -447,7 +458,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -493,7 +504,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -523,7 +534,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     const isDisabledModel = await hasDisabledAIModel();
     if (
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -552,7 +563,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -591,7 +602,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -630,7 +641,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -669,7 +680,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -708,7 +719,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(
+      !verifyAccess(
         authorization.substring(7),
         accessPassword,
         Date.now()
@@ -737,7 +748,7 @@ export async function middleware(request: NextRequest) {
     const authorization = request.headers.get("authorization") || "";
     if (
       request.method.toUpperCase() !== "POST" ||
-      !verifySignature(authorization.substring(7), accessPassword, Date.now())
+      !verifyAccess(authorization.substring(7), accessPassword, Date.now())
     ) {
       return NextResponse.json(
         { error: ERRORS.NO_PERMISSIONS },
@@ -764,7 +775,7 @@ export async function middleware(request: NextRequest) {
     } else if (request.method.toUpperCase() === "GET") {
       authorization = request.nextUrl.searchParams.get("password") || "";
     }
-    if (authorization !== accessPassword) {
+    if (!hasSession && (!accessPassword || authorization !== accessPassword)) {
       return NextResponse.json(
         { error: ERRORS.NO_PERMISSIONS },
         { status: 403 }
@@ -785,7 +796,7 @@ export async function middleware(request: NextRequest) {
   }
   if (request.nextUrl.pathname.startsWith("/api/mcp")) {
     const authorization = request.headers.get("authorization") || "";
-    if (authorization.substring(7) !== accessPassword) {
+    if (!hasSession && (!accessPassword || authorization.substring(7) !== accessPassword)) {
       const responseHeaders = new Headers();
       responseHeaders.set("WWW-Authenticate", ERRORS.NO_PERMISSIONS.message);
       return NextResponse.json(
@@ -810,5 +821,6 @@ export async function middleware(request: NextRequest) {
       });
     }
   }
+  if (!hasSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.next();
 }

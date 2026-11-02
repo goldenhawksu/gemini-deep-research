@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { NextRequest } from 'next/server';
+process.env.ACCESS_PASSWORD = 'test-only-password';
+test('login rejects bad passwords and issues a verifiable HttpOnly session', async () => {
+  const { POST } = await import('../src/app/api/auth/login/route');
+  const { verifySession } = await import('../src/utils/session');
+  const request = (password: string) => new NextRequest('http://localhost/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost' }, body: JSON.stringify({ password }) });
+  assert.equal((await POST(request('wrong'))).status, 401);
+  const response = await POST(request('test-only-password'));
+  assert.equal(response.status, 200);
+  const cookie = response.cookies.get('research_session')!;
+  assert.ok(cookie);
+  assert.match(response.headers.get('set-cookie')!, /HttpOnly/i);
+  assert.match(response.headers.get('set-cookie')!, /SameSite=lax/i);
+  assert.equal(await verifySession(cookie.value, 'test-only-password'), true);
+  assert.equal(await verifySession(cookie.value + 'x', 'test-only-password'), false);
+  assert.equal(await verifySession(cookie.value, 'rotated-password'), false);
+  assert.equal(await verifySession(cookie.value, 'test-only-password', Date.now() + 9 * 86400000), false);
+});

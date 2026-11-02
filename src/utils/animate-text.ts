@@ -28,7 +28,7 @@ export function animateText(locale: string = "zh") {
                   type: "element",
                   tagName: "span",
                   properties: {
-                    className: "animate-fade-in",
+                    className: ["animate-fade-in"],
                   },
                   children: [{ type: "text", value: word }],
                 });

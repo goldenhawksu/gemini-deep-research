@@ -90,8 +90,8 @@ interface SettingActions {
 }
 
 export const defaultValues: SettingStore = {
-  provider: "google",
-  mode: "",
+  provider: "openaicompatible",
+  mode: "proxy",
   apiKey: "",
   apiProxy: "",
   thinkingModel: "gemini-2.5-flash",
@@ -134,8 +134,8 @@ export const defaultValues: SettingStore = {
   azureNetworkingModel: "",
   openAICompatibleApiKey: "",
   openAICompatibleApiProxy: "",
-  openAICompatibleThinkingModel: "",
-  openAICompatibleNetworkingModel: "",
+  openAICompatibleThinkingModel: "gpt-6.1-terra",
+  openAICompatibleNetworkingModel: "gpt-6.1-terra",
   pollinationsApiProxy: "",
   pollinationsThinkingModel: "",
   pollinationsNetworkingModel: "",
@@ -144,7 +144,7 @@ export const defaultValues: SettingStore = {
   ollamaNetworkingModel: "",
   accessPassword: "",
   enableSearch: "1",
-  searchProvider: "model",
+  searchProvider: "searxng",
   tavilyApiKey: "",
   tavilyApiProxy: "",
   tavilyScope: "general",
@@ -172,6 +172,12 @@ export const defaultValues: SettingStore = {
   useFileFormatResource: "disable",
 };
 
+export function migrateSettings(saved: Partial<SettingStore>): Partial<SettingStore> {
+  const untouched = saved.provider === "google" && !saved.mode && !saved.apiKey &&
+    saved.thinkingModel === "gemini-2.5-flash" && saved.networkingModel === "gemini-2.5-flash" && saved.searchProvider === "model";
+  return untouched ? { ...saved, provider: "openaicompatible", mode: "proxy", searchProvider: "searxng", openAICompatibleThinkingModel: "gpt-6.1-terra", openAICompatibleNetworkingModel: "gpt-6.1-terra" } : saved;
+}
+
 export const useSettingStore = create(
   persist<SettingStore & SettingActions>(
     (set) => ({
@@ -179,6 +185,6 @@ export const useSettingStore = create(
       update: (values) => set(values),
       reset: () => set(defaultValues),
     }),
-    { name: "setting" },
+    { name: "setting", version: 1, migrate: (saved) => migrateSettings(saved as Partial<SettingStore>) as SettingStore & SettingActions },
   ),
 );

@@ -1,3 +1,4 @@
+import { fetchSearxng } from "@/utils/searxng";
 import {
   TAVILY_BASE_URL,
   FIRECRAWL_BASE_URL,
@@ -190,7 +191,7 @@ export async function createSearchProvider({
       {
         method: "POST",
         headers,
-        credentials: "omit",
+        credentials: "same-origin",
         body: JSON.stringify({
           query: query.replaceAll("\\", "").replaceAll('"', ""),
           search_depth: "advanced",
@@ -222,7 +223,7 @@ export async function createSearchProvider({
       {
         method: "POST",
         headers,
-        credentials: "omit",
+        credentials: "same-origin",
         body: JSON.stringify({
           query,
           limit: maxResult,
@@ -252,7 +253,7 @@ export async function createSearchProvider({
       {
         method: "POST",
         headers,
-        credentials: "omit",
+        credentials: "same-origin",
         body: JSON.stringify({
           query,
           category: scope || "research paper",
@@ -298,7 +299,7 @@ export async function createSearchProvider({
       {
         method: "POST",
         headers,
-        credentials: "omit",
+        credentials: "same-origin",
         body: JSON.stringify({
           query,
           freshness: "noLimit",
@@ -347,7 +348,7 @@ export async function createSearchProvider({
           "Accept-Encoding": "gzip",
           "X-Subscription-Token": apiKey,
         },
-        credentials: "omit",
+        credentials: "same-origin",
       },
     );
 
@@ -360,7 +361,7 @@ export async function createSearchProvider({
           "Accept-Encoding": "gzip",
           "X-Subscription-Token": apiKey,
         },
-        credentials: "omit",
+        credentials: "same-origin",
       },
     );
 
@@ -417,13 +418,14 @@ export async function createSearchProvider({
       searchQuery.append(key, value.toString());
     }
     const local = global.location || {};
-    const response = await fetch(
+    const searchFetch = typeof window === "undefined" ? fetchSearxng : fetch;
+    const response = await searchFetch(
       `${completePath(
         baseURL || SEARXNG_BASE_URL,
       )}/search?${searchQuery.toString()}`,
       baseURL?.startsWith(local.origin)
-        ? { method: "POST", credentials: "omit", headers }
-        : { method: "GET", credentials: "omit" },
+        ? { method: "POST", credentials: "same-origin", headers }
+        : { method: "GET", credentials: "same-origin" },
     );
     const { results = [] } = await response.json();
     const rearrangedResults = sort(

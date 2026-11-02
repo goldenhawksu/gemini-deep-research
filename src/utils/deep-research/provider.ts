@@ -139,7 +139,7 @@ export async function createAIProvider({
         return await fetch(input, {
           ...init,
           headers,
-          credentials: "omit",
+          credentials: "same-origin",
         });
       },
     });
